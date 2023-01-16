@@ -1,16 +1,10 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import rateLimit from 'axios-rate-limit';
+
 
 function Current() {
     const [data, setData] = useState([])
-
-    const [lat, setLat] = useState([]);
-    const [long, setLong] = useState([]);
-
-    navigator.geolocation.getCurrentPosition(function (position) {
-        setLat(position.coords.latitude);
-        setLong(position.coords.longitude);
-    });
 
     useEffect(() => {
 
@@ -18,19 +12,23 @@ function Current() {
             const options = {
                 method: 'GET',
                 url: 'https://weatherbit-v1-mashape.p.rapidapi.com/current',
-                params: { lon: lat, lat: long },
+                params: { lon: '38.5', lat: '-78.5' },
                 headers: {
                     'X-RapidAPI-Key': 'f1c3708e10msh1b4ab8a9141c588p1345cejsndd176f0e412d',
                     'X-RapidAPI-Host': 'weatherbit-v1-mashape.p.rapidapi.com'
                 }
             };
 
-            axios.request(options).then(function (response) {
-                console.log(response.data);
-                setData(response.data.data)
-            }).catch(function (error) {
-                console.error(error);
-            });
+            const api = rateLimit(axios.create(), { maxRequests: 5, perMilliseconds: 1000 });
+
+            try {
+                const response = await api.get(options);
+                setData(response.data);
+            } catch (error) {
+                if (error.response.status === 429) {
+                    console.log("Too many requests, please try again later.");
+                }
+            }
         }
 
         getCurrentWeather();
